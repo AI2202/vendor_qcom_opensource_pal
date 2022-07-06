@@ -780,6 +780,13 @@ int USBCardConfig::readBestConfig(struct pal_media_config *config,
             ret = -EINVAL;
         }
     }
+
+#if defined ASUS_AI2201_PROJECT || defined ASUS_DAVINCI_PROJECT
+    if (config->sample_rate == SAMPLE_RATE_44100) {
+        config->sample_rate = SAMPLE_RATE_48000;
+    }
+#endif
+
     return ret;
 }
 

@@ -41,11 +41,19 @@
 #include "sp_rx.h"
 #include "fluence_ffv_common_calibration.h"
 
+// ASUS_BSP +++
+#ifdef ASUS_AI2201_PROJECT
+#define USECASE_XML_FILE "/vendor/etc/audio/AI2201/usecaseKvManager_AI2201.xml"
+#elif defined ASUS_DAVINCI_PROJECT
+#define USECASE_XML_FILE "/vendor/etc/audio/DAVINCI/usecaseKvManager_davinci.xml"
+#else
 #if defined(FEATURE_IPQ_OPENWRT) || defined(LINUX_ENABLED)
 #define USECASE_XML_FILE "/etc/usecaseKvManager.xml"
 #else
 #define USECASE_XML_FILE "/vendor/etc/usecaseKvManager.xml"
 #endif
+#endif
+// ASUS_BSP ---
 
 #define PARAM_ID_CHMIXER_COEFF 0x0800101F
 #define CUSTOM_STEREO_NUM_OUT_CH 0x0002
@@ -76,6 +84,16 @@ struct volume_ctrl_master_gain_t
 };
 /* Structure type def for above payload. */
 typedef struct volume_ctrl_master_gain_t volume_ctrl_master_gain_t;
+
+#define PARAM_ID_VOL_CTRL_GAIN_RAMP_PARAMETERS 0x08001037
+#define PARAM_VOL_CTRL_RAMPINGCURVE_LINEAR 0
+/* Structure for holding soft stepping volume parameters. */
+struct volume_ctrl_gain_ramp_params_t
+{
+   uint32_t period_ms;
+   uint32_t step_us;
+   uint32_t ramping_curve;
+};
 
 /* ID of the Output Media Format parameters used by MODULE_ID_MFC */
 #define PARAM_ID_MFC_OUTPUT_MEDIA_FORMAT            0x08001024
@@ -165,6 +183,282 @@ std::vector<allKVs> PayloadBuilder::all_streams;
 std::vector<allKVs> PayloadBuilder::all_streampps;
 std::vector<allKVs> PayloadBuilder::all_devices;
 std::vector<allKVs> PayloadBuilder::all_devicepps;
+
+// ASUS_BSP Audio for offload volume table +++
+#ifdef ASUS_AI2201_PROJECT
+std::vector<long> PayloadBuilder::speakerVolumedB = {
+    8192,  // LEVEL_0
+    7747,  // LEVEL_1
+    7000,  // LEVEL_2
+    6421,  // LEVEL_3
+    5810,  // LEVEL_4
+    5249,  // LEVEL_5
+    4815,  // LEVEL_6
+    4357,  // LEVEL_7
+    3936,  // LEVEL_8
+    3611,  // LEVEL_9
+    3267,  // LEVEL_10
+    2844,  // LEVEL_11
+    2409,  // LEVEL_12
+    1990,  // LEVEL_13
+    1635,  // LEVEL_14
+    1385,  // LEVEL_15
+    1144,  // LEVEL_16
+     940,  // LEVEL_17
+     797,  // LEVEL_18
+     642,  // LEVEL_19
+     500,  // LEVEL_20
+     406,  // LEVEL_21
+     319,  // LEVEL_22
+     241,  // LEVEL_23
+     181,  // LEVEL_24
+     130,  // LEVEL_25
+      92,  // LEVEL_26
+      69,  // LEVEL_27
+      50,  // LEVEL_28
+      35,  // LEVEL_29
+       0,  // LEVEL_30
+};
+
+std::vector<long> PayloadBuilder::headsetVolumedB = {
+    8192,  // LEVEL_0
+    7015,  // LEVEL_1
+    5184,  // LEVEL_2
+    4021,  // LEVEL_3
+    3009,  // LEVEL_4
+    2223,  // LEVEL_5
+    1725,  // LEVEL_6
+    1291,  // LEVEL_7
+     954,  // LEVEL_8
+     740,  // LEVEL_9
+     553,  // LEVEL_10
+     408,  // LEVEL_11
+     314,  // LEVEL_12
+     233,  // LEVEL_13
+     170,  // LEVEL_14
+     131,  // LEVEL_15
+      97,  // LEVEL_16
+      71,  // LEVEL_17
+      55,  // LEVEL_18
+      41,  // LEVEL_19
+      30,  // LEVEL_20
+      23,  // LEVEL_21
+      17,  // LEVEL_22
+      12,  // LEVEL_23
+       9,  // LEVEL_24
+       7,  // LEVEL_25
+       5,  // LEVEL_26
+       4,  // LEVEL_27
+       3,  // LEVEL_28
+       2,  // LEVEL_29
+       0,  // LEVEL_30
+};
+
+std::vector<long> PayloadBuilder::usbVolumedB = {
+    8192,  // LEVEL_0
+    7015,  // LEVEL_1
+    5184,  // LEVEL_2
+    4021,  // LEVEL_3
+    3009,  // LEVEL_4
+    2223,  // LEVEL_5
+    1725,  // LEVEL_6
+    1291,  // LEVEL_7
+     954,  // LEVEL_8
+     740,  // LEVEL_9
+     553,  // LEVEL_10
+     408,  // LEVEL_11
+     314,  // LEVEL_12
+     233,  // LEVEL_13
+     170,  // LEVEL_14
+     131,  // LEVEL_15
+      97,  // LEVEL_16
+      71,  // LEVEL_17
+      55,  // LEVEL_18
+      41,  // LEVEL_19
+      30,  // LEVEL_20
+      23,  // LEVEL_21
+      17,  // LEVEL_22
+      12,  // LEVEL_23
+       9,  // LEVEL_24
+       7,  // LEVEL_25
+       5,  // LEVEL_26
+       4,  // LEVEL_27
+       3,  // LEVEL_28
+       2,  // LEVEL_29
+       0,  // LEVEL_30
+};
+
+std::vector<long> PayloadBuilder::btVolumedB = {
+    8192,  // LEVEL_0
+    7464,  // LEVEL_1
+    6276,  // LEVEL_2
+    5419,  // LEVEL_3
+    4576,  // LEVEL_4
+    3848,  // LEVEL_5
+    3322,  // LEVEL_6
+    2805,  // LEVEL_7
+    2359,  // LEVEL_8
+    2037,  // LEVEL_9
+    1720,  // LEVEL_10
+    1446,  // LEVEL_11
+    1249,  // LEVEL_12
+    1023,  // LEVEL_13
+     808,  // LEVEL_14
+     662,  // LEVEL_15
+     527,  // LEVEL_16
+     417,  // LEVEL_17
+     342,  // LEVEL_18
+     272,  // LEVEL_19
+     215,  // LEVEL_20
+     176,  // LEVEL_21
+     140,  // LEVEL_22
+     111,  // LEVEL_23
+      91,  // LEVEL_24
+      67,  // LEVEL_25
+      46,  // LEVEL_26
+      33,  // LEVEL_27
+      23,  // LEVEL_28
+      15,  // LEVEL_29
+       0,  // LEVEL_30
+};
+#elif defined ASUS_DAVINCI_PROJECT
+std::vector<float> PayloadBuilder::speakerVolumedB = {
+    1.0,        // LEVEL_0
+    0.716145,   // LEVEL_1
+    0.557508,   // LEVEL_2
+    0.434012,   // LEVEL_3
+    0.310815,   // LEVEL_4
+    0.241965,   // LEVEL_5
+    0.188367,    // LEVEL_6
+    0.134898,   // LEVEL_7
+    0.111411,   // LEVEL_8
+    0.092014,   // LEVEL_9
+    0.071299,   // LEVEL_10
+    0.058886,   // LEVEL_11
+    0.048633,   // LEVEL_12
+    0.037685,   // LEVEL_13
+    0.031124,   // LEVEL_14
+    0.025705,    // LEVEL_15
+    0.022619,   // LEVEL_16
+    0.020550,   // LEVEL_17
+    0.018670,    // LEVEL_18
+    0.016428,   // LEVEL_19
+    0.014925,   // LEVEL_20
+    0.013560,   // LEVEL_21
+    0.011932,   // LEVEL_22
+    0.010840,    // LEVEL_23
+    0.008125,   // LEVEL_24
+    0.005531,   // LEVEL_25
+    0.004146,   // LEVEL_26
+    0.003107,   // LEVEL_27
+    0.002116,   // LEVEL_28
+    0.001586,   // LEVEL_29
+    0.0,    // LEVEL_30
+};
+
+std::vector<float> PayloadBuilder::headsetVolumedB = {
+    1.0,        // LEVEL_0
+    0.712758,   // LEVEL_1
+    0.552902,   // LEVEL_2
+    0.428899,   // LEVEL_3
+    0.305701,   // LEVEL_4
+    0.237139,   // LEVEL_5
+    0.183954,   // LEVEL_6
+    0.131115,   // LEVEL_7
+    0.101709,   // LEVEL_8
+    0.078898,   // LEVEL_9
+    0.056235,   // LEVEL_10
+    0.043289,   // LEVEL_11
+    0.033323,   // LEVEL_12
+    0.023509,   // LEVEL_13
+    0.018097,   // LEVEL_14
+    0.013931,   // LEVEL_15
+    0.009828,   // LEVEL_16
+    0.007566,   // LEVEL_17
+    0.005824,   // LEVEL_18
+    0.004109,   // LEVEL_19
+    0.003163,   // LEVEL_20
+    0.002415,   // LEVEL_21
+    0.001686,   // LEVEL_22
+    0.001287,   // LEVEL_23
+    0.000983,   // LEVEL_24
+    0.000686,   // LEVEL_25
+    0.000524,   // LEVEL_26
+    0.000401,   // LEVEL_27
+    0.000280,   // LEVEL_28
+    0.000214,   // LEVEL_29
+    0.0,       // LEVEL_30
+};
+
+std::vector<float> PayloadBuilder::btVolumedB = {
+    1.0,        // LEVEL_0
+    0.92476,   // LEVEL_1
+    0.78559,   // LEVEL_2
+    0.66737,   // LEVEL_3
+    0.56694,   // LEVEL_4
+    0.48162,   // LEVEL_5
+    0.40914,   // LEVEL_6
+    0.34757,   // LEVEL_7
+    0.29526,   // LEVEL_8
+    0.25083,   // LEVEL_9
+    0.21308,   // LEVEL_10
+    0.18102,   // LEVEL_11
+    0.15378,   // LEVEL_12
+    0.12728,   // LEVEL_13
+    0.10208,   // LEVEL_14
+    0.08187,   // LEVEL_15
+    0.06566,   // LEVEL_16
+    0.05266,   // LEVEL_17
+    0.04223,   // LEVEL_18
+    0.03387,   // LEVEL_19
+    0.02717,   // LEVEL_20
+    0.02179,   // LEVEL_21
+    0.01748,   // LEVEL_22
+    0.01402,   // LEVEL_23
+    0.01124,   // LEVEL_24
+    0.00848,   // LEVEL_25
+    0.00590,   // LEVEL_26
+    0.00410,   // LEVEL_27
+    0.00285,   // LEVEL_28
+    0.00199,   // LEVEL_29
+    0.0,        // LEVEL_30
+};
+
+std::vector<float> PayloadBuilder::usbVolumedB = {
+    1.0,        // LEVEL_0
+    0.737306,   // LEVEL_1
+    0.586656,   // LEVEL_2
+    0.466788,   // LEVEL_3
+    0.344165,   // LEVEL_4
+    0.273844,   // LEVEL_5
+    0.217891,   // LEVEL_6
+    0.160652,   // LEVEL_7
+    0.127827,   // LEVEL_8
+    0.101709,   // LEVEL_9
+    0.074991,   // LEVEL_10
+    0.059257,   // LEVEL_11
+    0.046824,   // LEVEL_12
+    0.034206,   // LEVEL_13
+    0.027029,   // LEVEL_14
+    0.021358,   // LEVEL_15
+    0.015603,   // LEVEL_16
+    0.012330,   // LEVEL_17
+    0.009743,   // LEVEL_18
+    0.007118,   // LEVEL_19
+    0.005624,   // LEVEL_20
+    0.004412,   // LEVEL_21
+    0.003192,   // LEVEL_22
+    0.002504,   // LEVEL_23
+    0.001964,   // LEVEL_24
+    0.001421,   // LEVEL_25
+    0.001115,   // LEVEL_26
+    0.000875,   // LEVEL_27
+    0.000633,   // LEVEL_28
+    0.000497,   // LEVEL_29
+    0.0,       // LEVEL_30
+};
+#endif
+// ASUS_BSP Audio for offload volume table ---
 
 template <typename T>
 void PayloadBuilder::populateChannelMap(T pcmChannel, uint8_t numChannel)
@@ -326,6 +620,39 @@ void PayloadBuilder::payloadVolumeConfig(uint8_t** payload, size_t* size,
     header->param_size = payloadSize -  sizeof(struct apm_module_param_data_t);
     volConf = (volume_ctrl_master_gain_t *) (payloadInfo + sizeof(struct apm_module_param_data_t));
     volConf->master_gain = vol;
+    PAL_VERBOSE(LOG_TAG, "header params IID:%x param_id:%x error_code:%d param_size:%d",
+                  header->module_instance_id, header->param_id,
+                  header->error_code, header->param_size);
+    *size = payloadSize + padBytes;;
+    *payload = payloadInfo;
+    PAL_DBG(LOG_TAG, "payload %pK size %zu", *payload, *size);
+}
+
+void PayloadBuilder::payloadVolumeCtrlRamp(uint8_t** payload, size_t* size,
+        uint32_t miid, uint32_t ramp_period_ms)
+{
+    struct apm_module_param_data_t* header = NULL;
+    struct volume_ctrl_gain_ramp_params_t *rampParams;
+    uint8_t* payloadInfo = NULL;
+    size_t payloadSize = 0, padBytes = 0;
+
+    payloadSize = sizeof(struct apm_module_param_data_t) +
+                  sizeof(struct volume_ctrl_gain_ramp_params_t);
+    padBytes = PAL_PADDING_8BYTE_ALIGN(payloadSize);
+    payloadInfo = new uint8_t[payloadSize + padBytes]();
+    if (!payloadInfo) {
+        PAL_ERR(LOG_TAG, "payloadInfo malloc failed %s", strerror(errno));
+        return;
+    }
+    header = (struct apm_module_param_data_t*)payloadInfo;
+    header->module_instance_id = miid;
+    header->param_id = PARAM_ID_VOL_CTRL_GAIN_RAMP_PARAMETERS;
+    header->error_code = 0x0;
+    header->param_size = payloadSize -  sizeof(struct apm_module_param_data_t);
+    rampParams = (struct volume_ctrl_gain_ramp_params_t*) (payloadInfo + sizeof(struct apm_module_param_data_t));
+    rampParams->period_ms = ramp_period_ms;
+    rampParams->step_us = 0;
+    rampParams->ramping_curve = PARAM_VOL_CTRL_RAMPINGCURVE_LINEAR;
     PAL_VERBOSE(LOG_TAG, "header params IID:%x param_id:%x error_code:%d param_size:%d",
                   header->module_instance_id, header->param_id,
                   header->error_code, header->param_size);
@@ -2465,7 +2792,9 @@ int PayloadBuilder::populateStreamCkv(Stream *s,
 {
     int status = 0;
     struct pal_stream_attributes sAttr;
+//Jessy +++ ASUS ringtone feature, -18db for HEADSET
     std::shared_ptr<ResourceManager> rm = ResourceManager::getInstance();
+//Jessy ---
     struct volume_set_param_info vol_set_param_info;
 
     PAL_DBG(LOG_TAG, "Enter");
@@ -2485,6 +2814,15 @@ int PayloadBuilder::populateStreamCkv(Stream *s,
             keyVector.push_back(std::make_pair(STREAM_CHANNELS,
                 sAttr.in_media_config.ch_info.channels));
             break;
+//Jessy +++ ASUS ringtone feature, -18db for HEADSET
+        case PAL_STREAM_LOW_LATENCY:
+            if (rm->isRing)
+                keyVector.push_back(std::make_pair(ASUS_CONFIG_MAP, ASUS_CFG1));
+            else
+                keyVector.push_back(std::make_pair(ASUS_CONFIG_MAP, ASUS_CFG0));
+            PAL_DBG(LOG_TAG, "ASUS_CONFIG_MAP %d",rm->isRing);
+            break;
+//Jessy ---
         default:
             /*
              * Sending volume minimum as we want to ramp up instead of ramping
@@ -2498,8 +2836,13 @@ int PayloadBuilder::populateStreamCkv(Stream *s,
                     vol_set_param_info.streams_.end());
             if ((vol_set_param_info.isVolumeUsingSetParam == false) ||
                 ((vol_set_param_info.isVolumeUsingSetParam == true) && !isStreamAvail)) {
+#if defined ASUS_AI2201_PROJECT || defined ASUS_DAVINCI_PROJECT
+                keyVector.push_back(std::make_pair(VOLUME,LEVEL_30));
+                PAL_DBG(LOG_TAG, "Entered default %x %x", VOLUME, LEVEL_30);
+#else
                 keyVector.push_back(std::make_pair(VOLUME,LEVEL_15));
                 PAL_DBG(LOG_TAG, "Entered default %x %x", VOLUME, LEVEL_15);
+#endif
             }
             break;
      }
@@ -2558,12 +2901,33 @@ int PayloadBuilder::populateDevicePPCkv(Stream *s, std::vector <std::pair<int,in
                                                    dAttr.config.ch_info.channels));
                 break;
             case PAL_STREAM_LOW_LATENCY:
+//Jessy +++ ASUS ringtone feature, -18db for HEADSET
+                if ((dAttr.id == PAL_DEVICE_OUT_WIRED_HEADSET) ||
+                    (dAttr.id == PAL_DEVICE_OUT_WIRED_HEADPHONE)) {
+                   if (rm->isRing)
+                        keyVector.push_back(std::make_pair(ASUS_CONFIG_MAP, ASUS_CFG1));
+                    else
+                        keyVector.push_back(std::make_pair(ASUS_CONFIG_MAP, ASUS_CFG0));
+                    PAL_DBG(LOG_TAG, "ASUS_CONFIG_MAP %d dAttr.id %d",rm->isRing,dAttr.id);
+                }
+//Jessy ---
             case PAL_STREAM_DEEP_BUFFER:
             case PAL_STREAM_PCM_OFFLOAD:
             case PAL_STREAM_COMPRESSED:
                 if (dAttr.id == PAL_DEVICE_OUT_SPEAKER) {
                     PAL_INFO(LOG_TAG,"SpeakerProt Status[%d], RAS Status[%d]\n",
                             rm->isSpeakerProtectionEnabled, rm->isRasEnabled);
+//ASUS_BSP Mei for outdoor mode +++
+#ifdef ASUS_DAVINCI_PROJECT
+                    if (rm->isOutdoorEnabled) {
+                        PAL_INFO(LOG_TAG, "set outdoor:%x on", OUTDOOR_MODE);
+                        keyVector.push_back(std::make_pair(OUTDOOR_MODE, OUTDOOR_MODE_ON));
+                    } else {
+                        PAL_INFO(LOG_TAG, "set outdoor:%x off", OUTDOOR_MODE);
+                        keyVector.push_back(std::make_pair(OUTDOOR_MODE, OUTDOOR_MODE_OFF));
+                    }
+#endif
+//ASUS_BSP Mei for outdoor mode ---
                 }
                 if (rm->isSpeakerProtectionEnabled == true &&
                     rm->isRasEnabled == true &&
@@ -2585,6 +2949,32 @@ int PayloadBuilder::populateDevicePPCkv(Stream *s, std::vector <std::pair<int,in
                     PAL_DBG(LOG_TAG, "Entered default %x %x", GAIN, GAIN_0);
                     keyVector.push_back(std::make_pair(GAIN, GAIN_0));
                 }
+
+
+
+//Jessy +++ send 30 volume steps CKV device for offload
+            if ((sattr->type == PAL_STREAM_PCM_OFFLOAD) ||
+                (sattr->type == PAL_STREAM_COMPRESSED)) {
+                if ((dAttr.id == PAL_DEVICE_OUT_SPEAKER)||
+                    (dAttr.id == PAL_DEVICE_OUT_HANDSET))
+                    keyVector.push_back(std::make_pair(ASUS_CONFIG_MAP, ASUS_CFG10));
+                else if ((dAttr.id == PAL_DEVICE_OUT_WIRED_HEADPHONE)||
+                    (dAttr.id == PAL_DEVICE_OUT_USB_HEADSET)) {
+                    if(rm->isHighImpHeadphone) {
+                        keyVector.push_back(std::make_pair(ASUS_CONFIG_MAP, ASUS_CFG9));
+                    } else {
+                        keyVector.push_back(std::make_pair(ASUS_CONFIG_MAP, ASUS_CFG11));
+                    }
+                }
+                else if ((dAttr.id == PAL_DEVICE_OUT_BLUETOOTH_A2DP) || 
+                         (dAttr.id == PAL_DEVICE_OUT_BLUETOOTH_SCO) || 
+                         (dAttr.id == PAL_DEVICE_OUT_PROXY))
+                    keyVector.push_back(std::make_pair(ASUS_CONFIG_MAP, ASUS_CFG12));
+                else
+                    keyVector.push_back(std::make_pair(ASUS_CONFIG_MAP, ASUS_CFG11));
+               PAL_DBG(LOG_TAG, "ASUS_CONFIG_MAP sattr->type %d dAttr.id %d",sattr->type,dAttr.id);
+            }
+//Jessy ---
 
                 /* TBD: Push Channels for these types once Channels are added */
                 //keyVector.push_back(std::make_pair(CHANNELS,
@@ -2612,6 +3002,11 @@ int PayloadBuilder::populateCalKeyVector(Stream *s, std::vector <std::pair<int,i
     int level = -1;
     std::vector<std::shared_ptr<Device>> associatedDevices;
     std::shared_ptr<ResourceManager> rm = ResourceManager::getInstance();
+#if defined ASUS_AI2201_PROJECT
+    long *devVoldB = NULL;
+#elif defined ASUS_DAVINCI_PROJECT
+    float *devVoldB = NULL;
+#endif
 
     memset(&sAttr, 0, sizeof(struct pal_stream_attributes));
     status = s->getStreamAttributes(&sAttr);
@@ -2635,12 +3030,281 @@ int PayloadBuilder::populateCalKeyVector(Stream *s, std::vector <std::pair<int,i
         goto error_1;
     }
 
-    PAL_VERBOSE(LOG_TAG,"volume sent:%f \n",(voldata->volume_pair[0].vol));
+    PAL_INFO(LOG_TAG,"volume sent:%f \n",(voldata->volume_pair[0].vol));
     /*scaling the volume by PLAYBACK_VOLUME_MAX factor*/
     voldB = (long)((voldata->volume_pair[0].vol) * (PLAYBACK_VOLUME_MAX*1.0));
+    PAL_INFO(LOG_TAG,"voldB:%ld \n",voldB);
 
     switch (static_cast<uint32_t>(tag)) {
     case TAG_STREAM_VOLUME:
+#if defined ASUS_AI2201_PROJECT
+        status = s->getAssociatedDevices(associatedDevices);
+        if (0 != status) {
+            PAL_ERR(LOG_TAG,"getAssociatedDevices Failed \n");
+            goto error_1;
+        }
+
+        for (int i = 0; i < associatedDevices.size(); i++) {
+            status = associatedDevices[i]->getDeviceAttributes(&dAttr);
+            if (0 != status) {
+                PAL_ERR(LOG_TAG,"getAssociatedDevices Failed \n");
+                return status;
+            }
+            if (dAttr.id == PAL_DEVICE_OUT_SPEAKER) {
+                PAL_DBG(LOG_TAG, "Speaker volume curve");
+                devVoldB = speakerVolumedB.data();
+                break;
+            } else if (dAttr.id == PAL_DEVICE_OUT_WIRED_HEADSET ||
+                       dAttr.id == PAL_DEVICE_OUT_WIRED_HEADPHONE) {
+                PAL_DBG(LOG_TAG, "Headset volume curve");
+                devVoldB = headsetVolumedB.data();
+                break;
+            } else if (dAttr.id == PAL_DEVICE_OUT_BLUETOOTH_SCO ||
+                       dAttr.id == PAL_DEVICE_OUT_BLUETOOTH_A2DP) {
+                PAL_DBG(LOG_TAG, "BT volume curve");
+                devVoldB = btVolumedB.data();
+                break;
+            } else if (dAttr.id == PAL_DEVICE_OUT_USB_DEVICE ||
+                       dAttr.id == PAL_DEVICE_OUT_USB_HEADSET) {
+                PAL_DBG(LOG_TAG, "USB volume curve");
+                devVoldB = usbVolumedB.data();
+                break;
+            }
+        }
+
+        if (devVoldB == NULL) {
+            PAL_DBG(LOG_TAG, "set default Speaker volume curve");
+            devVoldB = speakerVolumedB.data();
+        }
+
+        if (voldB <= devVoldB[30]) {
+            ckv.push_back(std::make_pair(VOLUME,LEVEL_30));
+        }
+        else if (voldB <= devVoldB[29]) {
+            ckv.push_back(std::make_pair(VOLUME,LEVEL_29));
+        }
+        else if (voldB <= devVoldB[28]) {
+            ckv.push_back(std::make_pair(VOLUME,LEVEL_28));
+        }
+        else if (voldB <= devVoldB[27]) {
+            ckv.push_back(std::make_pair(VOLUME,LEVEL_27));
+        }
+        else if (voldB <= devVoldB[26]) {
+            ckv.push_back(std::make_pair(VOLUME,LEVEL_26));
+        }
+        else if (voldB <= devVoldB[25]) {
+            ckv.push_back(std::make_pair(VOLUME,LEVEL_25));
+        }
+        else if (voldB <= devVoldB[24]) {
+            ckv.push_back(std::make_pair(VOLUME,LEVEL_24));
+        }
+        else if (voldB <= devVoldB[23]) {
+            ckv.push_back(std::make_pair(VOLUME,LEVEL_23));
+        }
+        else if (voldB <= devVoldB[22]) {
+            ckv.push_back(std::make_pair(VOLUME,LEVEL_22));
+        }
+        else if (voldB <= devVoldB[21]) {
+            ckv.push_back(std::make_pair(VOLUME,LEVEL_21));
+        }
+        else if (voldB <= devVoldB[20]) {
+            ckv.push_back(std::make_pair(VOLUME,LEVEL_20));
+        }
+        else if (voldB <= devVoldB[19]) {
+            ckv.push_back(std::make_pair(VOLUME,LEVEL_19));
+        }
+        else if (voldB <= devVoldB[18]) {
+            ckv.push_back(std::make_pair(VOLUME,LEVEL_18));
+        }
+        else if (voldB <= devVoldB[17]) {
+            ckv.push_back(std::make_pair(VOLUME,LEVEL_17));
+        }
+        else if (voldB <= devVoldB[16]) {
+            ckv.push_back(std::make_pair(VOLUME,LEVEL_16));
+        }
+        else if (voldB <= devVoldB[15]) {
+            ckv.push_back(std::make_pair(VOLUME,LEVEL_15));
+        }
+        else if (voldB <= devVoldB[14]) {
+            ckv.push_back(std::make_pair(VOLUME,LEVEL_14));
+        }
+        else if (voldB <= devVoldB[13]) {
+            ckv.push_back(std::make_pair(VOLUME,LEVEL_13));
+        }
+        else if (voldB <= devVoldB[12]) {
+            ckv.push_back(std::make_pair(VOLUME,LEVEL_12));
+        }
+        else if (voldB <= devVoldB[11]) {
+            ckv.push_back(std::make_pair(VOLUME,LEVEL_11));
+        }
+        else if (voldB <= devVoldB[10]) {
+            ckv.push_back(std::make_pair(VOLUME,LEVEL_10));
+        }
+        else if (voldB <= devVoldB[9]) {
+            ckv.push_back(std::make_pair(VOLUME,LEVEL_9));
+        }
+        else if (voldB <= devVoldB[8]) {
+            ckv.push_back(std::make_pair(VOLUME,LEVEL_8));
+        }
+        else if (voldB <= devVoldB[7]) {
+            ckv.push_back(std::make_pair(VOLUME,LEVEL_7));
+        }
+        else if (voldB <= devVoldB[6]) {
+            ckv.push_back(std::make_pair(VOLUME,LEVEL_6));
+        }
+        else if (voldB <= devVoldB[5]) {
+            ckv.push_back(std::make_pair(VOLUME,LEVEL_5));
+        }
+        else if (voldB <= devVoldB[4]) {
+            ckv.push_back(std::make_pair(VOLUME,LEVEL_4));
+        }
+        else if (voldB <= devVoldB[3]) {
+            ckv.push_back(std::make_pair(VOLUME,LEVEL_3));
+        }
+        else if (voldB <= devVoldB[2]) {
+            ckv.push_back(std::make_pair(VOLUME,LEVEL_2));
+        }
+        else if (voldB <= devVoldB[1]) {
+            ckv.push_back(std::make_pair(VOLUME,LEVEL_1));
+        }
+        else if (voldB <= devVoldB[0]) {
+            ckv.push_back(std::make_pair(VOLUME,LEVEL_0));
+        }
+#elif defined ASUS_DAVINCI_PROJECT
+        status = s->getAssociatedDevices(associatedDevices);
+        if (0 != status) {
+            PAL_ERR(LOG_TAG,"getAssociatedDevices Failed \n");
+            goto error_1;
+        }
+
+        for (int i = 0; i < associatedDevices.size(); i++) {
+            status = associatedDevices[i]->getDeviceAttributes(&dAttr);
+            if (0 != status) {
+                PAL_ERR(LOG_TAG,"getAssociatedDevices Failed \n");
+                return status;
+            }
+            if (dAttr.id == PAL_DEVICE_OUT_SPEAKER) {
+                PAL_INFO(LOG_TAG, "Speaker volume curve");
+                devVoldB = speakerVolumedB.data();
+                break;
+            } else if (dAttr.id == PAL_DEVICE_OUT_WIRED_HEADSET ||
+                       dAttr.id == PAL_DEVICE_OUT_WIRED_HEADPHONE) {
+                PAL_INFO(LOG_TAG, "Headset volume curve");
+                devVoldB = headsetVolumedB.data();
+                break;
+            } else if (dAttr.id == PAL_DEVICE_OUT_BLUETOOTH_SCO ||
+                       dAttr.id == PAL_DEVICE_OUT_BLUETOOTH_A2DP) {
+                PAL_INFO(LOG_TAG, "BT volume curve");
+                devVoldB = btVolumedB.data();
+                break;
+            } else if (dAttr.id == PAL_DEVICE_OUT_USB_DEVICE ||
+                       dAttr.id == PAL_DEVICE_OUT_USB_HEADSET) {
+                PAL_INFO(LOG_TAG, "USB volume curve");
+                devVoldB = usbVolumedB.data();
+                break;
+            }else
+				PAL_INFO(LOG_TAG, "device id %d  voldB %ld" , dAttr.id, voldB);
+        }
+
+        if (devVoldB == NULL) {
+            PAL_INFO(LOG_TAG, "set default Speaker volume curve");
+            devVoldB = speakerVolumedB.data();
+        }
+
+        if (voldB <= (long)(devVoldB[30] * (PLAYBACK_VOLUME_MAX*1.0))) {
+            ckv.push_back(std::make_pair(VOLUME,LEVEL_30));
+        }
+        else if (voldB <= (devVoldB[29] * (PLAYBACK_VOLUME_MAX*1.0))) {
+            ckv.push_back(std::make_pair(VOLUME,LEVEL_29));
+        }
+        else if (voldB <= (devVoldB[28] * (PLAYBACK_VOLUME_MAX*1.0))) {
+            ckv.push_back(std::make_pair(VOLUME,LEVEL_28));
+        }
+        else if (voldB <= (devVoldB[27] * (PLAYBACK_VOLUME_MAX*1.0))) {
+            ckv.push_back(std::make_pair(VOLUME,LEVEL_27));
+        }
+        else if (voldB <= (devVoldB[26] * (PLAYBACK_VOLUME_MAX*1.0))) {
+            ckv.push_back(std::make_pair(VOLUME,LEVEL_26));
+        }
+        else if (voldB <= (devVoldB[25] * (PLAYBACK_VOLUME_MAX*1.0))) {
+            ckv.push_back(std::make_pair(VOLUME,LEVEL_25));
+        }
+        else if (voldB <= (devVoldB[24] * (PLAYBACK_VOLUME_MAX*1.0))) {
+            ckv.push_back(std::make_pair(VOLUME,LEVEL_24));
+        }
+        else if (voldB <= (devVoldB[23] * (PLAYBACK_VOLUME_MAX*1.0))) {
+            ckv.push_back(std::make_pair(VOLUME,LEVEL_23));
+        }
+        else if (voldB <= (devVoldB[22] * (PLAYBACK_VOLUME_MAX*1.0))) {
+            ckv.push_back(std::make_pair(VOLUME,LEVEL_22));
+        }
+        else if (voldB <= (devVoldB[21] * (PLAYBACK_VOLUME_MAX*1.0))) {
+            ckv.push_back(std::make_pair(VOLUME,LEVEL_21));
+        }
+        else if (voldB <= (devVoldB[20] * (PLAYBACK_VOLUME_MAX*1.0))) {
+            ckv.push_back(std::make_pair(VOLUME,LEVEL_20));
+        }
+        else if (voldB <= (devVoldB[19] * (PLAYBACK_VOLUME_MAX*1.0))) {
+            ckv.push_back(std::make_pair(VOLUME,LEVEL_19));
+        }
+        else if (voldB <= (devVoldB[18] * (PLAYBACK_VOLUME_MAX*1.0))) {
+            ckv.push_back(std::make_pair(VOLUME,LEVEL_18));
+        }
+        else if (voldB <= (devVoldB[17] * (PLAYBACK_VOLUME_MAX*1.0))) {
+            ckv.push_back(std::make_pair(VOLUME,LEVEL_17));
+        }
+        else if (voldB <= (devVoldB[16] * (PLAYBACK_VOLUME_MAX*1.0))) {
+            ckv.push_back(std::make_pair(VOLUME,LEVEL_16));
+        }
+        else if (voldB <= (devVoldB[15] * (PLAYBACK_VOLUME_MAX*1.0))) {
+            ckv.push_back(std::make_pair(VOLUME,LEVEL_15));
+        }
+        else if (voldB <= (devVoldB[14] * (PLAYBACK_VOLUME_MAX*1.0))) {
+            ckv.push_back(std::make_pair(VOLUME,LEVEL_14));
+        }
+        else if (voldB <= (devVoldB[13] * (PLAYBACK_VOLUME_MAX*1.0))) {
+            ckv.push_back(std::make_pair(VOLUME,LEVEL_13));
+        }
+        else if (voldB <= (devVoldB[12] * (PLAYBACK_VOLUME_MAX*1.0))) {
+            ckv.push_back(std::make_pair(VOLUME,LEVEL_12));
+        }
+        else if (voldB <= (devVoldB[11] * (PLAYBACK_VOLUME_MAX*1.0))) {
+            ckv.push_back(std::make_pair(VOLUME,LEVEL_11));
+        }
+        else if (voldB <= (devVoldB[10] * (PLAYBACK_VOLUME_MAX*1.0))) {
+            ckv.push_back(std::make_pair(VOLUME,LEVEL_10));
+        }
+        else if (voldB <= (devVoldB[9] * (PLAYBACK_VOLUME_MAX*1.0))) {
+            ckv.push_back(std::make_pair(VOLUME,LEVEL_9));
+        }
+        else if (voldB <= (devVoldB[8] * (PLAYBACK_VOLUME_MAX*1.0))) {
+            ckv.push_back(std::make_pair(VOLUME,LEVEL_8));
+        }
+        else if (voldB <= (devVoldB[7] * (PLAYBACK_VOLUME_MAX*1.0))) {
+            ckv.push_back(std::make_pair(VOLUME,LEVEL_7));
+        }
+        else if (voldB <= (devVoldB[6] * (PLAYBACK_VOLUME_MAX*1.0))) {
+            ckv.push_back(std::make_pair(VOLUME,LEVEL_6));
+        }
+        else if (voldB <= (devVoldB[5] * (PLAYBACK_VOLUME_MAX*1.0))) {
+            ckv.push_back(std::make_pair(VOLUME,LEVEL_5));
+        }
+        else if (voldB <= (devVoldB[4] * (PLAYBACK_VOLUME_MAX*1.0))) {
+            ckv.push_back(std::make_pair(VOLUME,LEVEL_4));
+        }
+        else if (voldB <= (devVoldB[3] * (PLAYBACK_VOLUME_MAX*1.0))) {
+            ckv.push_back(std::make_pair(VOLUME,LEVEL_3));
+        }
+        else if (voldB <= (devVoldB[2] * (PLAYBACK_VOLUME_MAX*1.0))) {
+            ckv.push_back(std::make_pair(VOLUME,LEVEL_2));
+        }
+        else if (voldB <= (devVoldB[1] * (PLAYBACK_VOLUME_MAX*1.0))) {
+            ckv.push_back(std::make_pair(VOLUME,LEVEL_1));
+        }
+        else if (voldB <= (devVoldB[0] * (PLAYBACK_VOLUME_MAX*1.0))) {
+            ckv.push_back(std::make_pair(VOLUME,LEVEL_0));
+        }
+#else
         if (voldB == 0L) {
             ckv.push_back(std::make_pair(VOLUME,LEVEL_15));
         }
@@ -2689,6 +3353,7 @@ int PayloadBuilder::populateCalKeyVector(Stream *s, std::vector <std::pair<int,i
         else if (voldB <= 8192L) {
             ckv.push_back(std::make_pair(VOLUME,LEVEL_0));
         }
+#endif
         break;
     case TAG_DEVICE_PP_MBDRC:
         level = s->getGainLevel();
@@ -2747,6 +3412,17 @@ int PayloadBuilder::populateCalKeyVector(Stream *s, std::vector <std::pair<int,i
             }
         }
     break;
+//ASUS_BSP Mei for outdoor mode +++
+#ifdef ASUS_DAVINCI_PROJECT
+    case TAG_OUTDOOR_MODE:
+        if (rm->isOutdoorEnabled)
+            ckv.push_back(std::make_pair(OUTDOOR_MODE, OUTDOOR_MODE_ON));
+        else
+            ckv.push_back(std::make_pair(OUTDOOR_MODE, OUTDOOR_MODE_OFF));
+        PAL_INFO(LOG_TAG, "update outdoor ckv %d",rm->isOutdoorEnabled);
+        break;
+#endif
+//ASUS_BSP Mei for outdoor mode ---
     default:
         break;
     }

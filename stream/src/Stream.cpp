@@ -1238,7 +1238,7 @@ int32_t Stream::switchDevice(Stream* streamHandle, uint32_t numDev, struct pal_d
     std::vector <Stream *> streamsToSwitch;
     struct pal_device streamDevAttr;
     std::vector <Stream*>::iterator sIter;
-    bool VoiceorVoip_call_active = false;
+    struct pal_volume_data *volume = NULL;
 
     rm->lockActiveStream();
     mStreamMutex.lock();
@@ -1305,7 +1305,8 @@ int32_t Stream::switchDevice(Stream* streamHandle, uint32_t numDev, struct pal_d
         // This assumes that PAL_DEVICE_NONE comes as single device
         if ((newDevices[i].id == PAL_DEVICE_NONE) &&
             (((isCurDeviceA2dp == true) && !rm->isDeviceReady(PAL_DEVICE_OUT_BLUETOOTH_A2DP)) ||
-             (isCurrentDeviceProxyOut) || (isCurrentDeviceDpOut))) {
+//             (isCurrentDeviceProxyOut) || //Jessy 314006 avoid routing voice to speaker during miracast
+             (isCurrentDeviceDpOut))) {
             newDevices[i].id = PAL_DEVICE_OUT_SPEAKER;
 
             if (rm->getDeviceConfig(&newDevices[i], mStreamAttr)) {
@@ -1386,17 +1387,6 @@ int32_t Stream::switchDevice(Stream* streamHandle, uint32_t numDev, struct pal_d
          * is removed above.
          */
         if (sharedBEStreamDev.size() > 0) {
-            for (const auto &elem : sharedBEStreamDev) {
-                struct pal_stream_attributes strAttr;
-                std::get<0>(elem)->getStreamAttributes(&strAttr);
-                if (strAttr.type == PAL_STREAM_VOIP ||
-                    strAttr.type == PAL_STREAM_VOIP_RX ||
-                    strAttr.type == PAL_STREAM_VOIP_TX ||
-                    strAttr.type == PAL_STREAM_VOICE_CALL) {
-                    VoiceorVoip_call_active = true;
-                    break;
-                }
-            }
             rm->getSndDeviceName(newDeviceId, CurrentSndDeviceName);
             // update device attr based on prio
             rm->updatePriorityAttr(newDeviceId,
@@ -1417,21 +1407,6 @@ int32_t Stream::switchDevice(Stream* streamHandle, uint32_t numDev, struct pal_d
                     continue;
                 }
                 curDev->getDeviceAttributes(&curDevAttr);
-
-                /* avoid device for voice/voip being switched by low priority switch*/
-                if (VoiceorVoip_call_active &&
-                    strAttr.type != PAL_STREAM_VOICE_CALL &&
-                    strAttr.type != PAL_STREAM_VOIP_RX &&
-                    strAttr.type != PAL_STREAM_VOIP_TX &&
-                    strAttr.type != PAL_STREAM_VOIP &&
-                    curDevAttr.id != newDevices[newDeviceSlots[i]].id) {
-                    newDevices[newDeviceSlots[i]].id = curDevAttr.id;
-                    rm->getSndDeviceName(newDevices[newDeviceSlots[i]].id, CurrentSndDeviceName);
-                    rm->updatePriorityAttr(newDevices[newDeviceSlots[i]].id,
-                                       sharedBEStreamDev,
-                                       &(newDevices[newDeviceSlots[i]]),
-                                       &strAttr);
-                }
 
                 /*
                  * for current stream, if custom key updated, even reset of the attr
@@ -1582,9 +1557,29 @@ int32_t Stream::switchDevice(Stream* streamHandle, uint32_t numDev, struct pal_d
 done:
     mStreamMutex.lock();
     if (a2dpMuted && !isNewDeviceA2dp) {
-        mute_l(false);
-        a2dpMuted = false;
         suspendedDevIds.clear();
+        volume = (struct pal_volume_data *)calloc(1, (sizeof(uint32_t) +
+                         (sizeof(struct pal_channel_vol_kv) * (0xFFFF))));
+        if (!volume) {
+            status = -ENOMEM;
+            return status;
+        }
+        status = getVolumeData(volume);
+        if (status) {
+            PAL_ERR(LOG_TAG, "getVolumeData failed %d", status);
+            mStreamMutex.unlock();
+            return status;
+        }
+        a2dpMuted = false;
+        status = setVolume(volume);
+        free(volume);
+        if (status) {
+            PAL_ERR(LOG_TAG, "setVolume failed %d", status);
+            a2dpMuted = true;
+            mStreamMutex.unlock();
+            return status;
+        }
+        mute_l(false);
     }
     mStreamMutex.unlock();
     return status;

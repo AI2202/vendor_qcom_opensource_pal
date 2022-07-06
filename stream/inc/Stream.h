@@ -112,6 +112,10 @@ typedef enum {
 #define DEVICEPP_MUTE 45
 #define DEVICEPP_UNMUTE 46
 
+//Jessy +++ ASUS ringtone feature, -18db for HEADSET
+#define ASUS_CONFIG 91
+//Jessy ---
+
 /* This sleep is added to give time to kernel and
  * spf to recover from SSR so that audio-hal will
  * not continously try to open a session if it fails
@@ -124,7 +128,7 @@ typedef enum {
  * pause completion. But it's not the case in Gecko.
  * FIXME: load the ramp period config from acdb.
  */
-#define VOLUME_RAMP_PERIOD (100*1000)
+#define VOLUME_RAMP_PERIOD (230*1000)
 
 /*
  * The sleep is required for mute to ramp down.
@@ -170,7 +174,9 @@ public:
     pal_stream_callback streamCb;
     uint64_t cookie;
     bool isPaused = false;
+    bool isDevRegistered = false;
     bool a2dpMuted = false;
+    int dropBuffA2dpSuspend = 0; //asus vector added to drop buffer when a2dp suspend and sco not readly
     bool a2dpPaused = false;
     std::vector<pal_device_id_t> suspendedDevIds;
     virtual int32_t open() = 0;

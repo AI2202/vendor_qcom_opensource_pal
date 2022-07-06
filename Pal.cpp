@@ -362,12 +362,13 @@ int32_t pal_stream_set_volume(pal_stream_handle_t *stream_handle,
 {
     Stream *s = NULL;
     int status;
+    PAL_INFO(LOG_TAG, "pal_stream_set_volume Enter. Stream handle :%pK", stream_handle);
     if (!stream_handle || !volume) {
         status = -EINVAL;
         PAL_ERR(LOG_TAG,"Invalid input parameters status %d", status);
         return status;
     }
-    PAL_DBG(LOG_TAG, "Enter. Stream handle :%pK", stream_handle);
+    PAL_INFO(LOG_TAG, "pal_stream_set_volume call setVolume");
     s =  reinterpret_cast<Stream *>(stream_handle);
     status = s->setVolume(volume);
     if (0 != status) {
@@ -565,7 +566,7 @@ int32_t pal_get_timestamp(pal_stream_handle_t *stream_handle,
         PAL_ERR(LOG_TAG, "Invalid input parameters status %d\n", status);
         return status;
     }
-    PAL_DBG(LOG_TAG, "Enter. Stream handle :%pK\n", stream_handle);
+    PAL_VERBOSE(LOG_TAG, "Enter. Stream handle :%pK\n", stream_handle);
     s =  reinterpret_cast<Stream *>(stream_handle);
     status = s->getTimestamp(stime);
     if (0 != status) {
@@ -575,7 +576,7 @@ int32_t pal_get_timestamp(pal_stream_handle_t *stream_handle,
     PAL_VERBOSE(LOG_TAG, "stime->session_time.value_lsw = %u, stime->session_time.value_msw = %u \n", stime->session_time.value_lsw, stime->session_time.value_msw);
     PAL_VERBOSE(LOG_TAG, "stime->absolute_time.value_lsw = %u, stime->absolute_time.value_msw = %u \n", stime->absolute_time.value_lsw, stime->absolute_time.value_msw);
     PAL_VERBOSE(LOG_TAG, "stime->timestamp.value_lsw = %u, stime->timestamp.value_msw = %u \n", stime->timestamp.value_lsw, stime->timestamp.value_msw);
-    PAL_DBG(LOG_TAG, "Exit. status %d", status);
+    PAL_VERBOSE(LOG_TAG, "Exit. status %d", status);
     return status;
 }
 

@@ -30,7 +30,7 @@
 
 #define LOG_TAG "PAL: SpeakerProtection"
 
-
+#include <cutils/properties.h>
 #include "SpeakerProtection.h"
 #include "PalAudioRoute.h"
 #include "ResourceManager.h"
@@ -63,6 +63,13 @@
 
 #define MIN_RESISTANCE_SPKR_Q24 (2 * (1 << 24))
 
+//ASUS_BSP default use golden value +++
+#ifdef ASUS_DAVINCI_PROJECT
+#define RCV_GOLDEN_RESISTANCE_Q24 (6 * (1 << 24))
+#define SPK_GOLDEN_RESISTANCE_Q24 (6.5 * (1 << 24))
+#endif
+//ASUS_BSP default use golden value---
+
 #define DEFAULT_PERIOD_SIZE 256
 #define DEFAULT_PERIOD_COUNT 4
 
@@ -76,6 +83,17 @@
 
 #define CALIBRATION_STATUS_SUCCESS 4
 #define CALIBRATION_STATUS_FAILURE 5
+
+//ASUS_BSP for check calibration value +++
+#ifdef ASUS_DAVINCI_PROJECT
+#define MIN_RESISTANCE_RECEIVER_Q24 (5.1 * (1 << 24))
+#define MAX_RESISTANCE_RECEIVER_Q24 (6.9 * (1 << 24))
+#define MIN_RESISTANCE_SPEAKER_Q24 (5.525 * (1 << 24))
+#define MAX_RESISTANCE_SPEAKER_Q24 (7.475 * (1 << 24))
+#define GOLDEN_RESISTANCE_RECEIVER_Q24 (6 * (1 << 24))
+#define GOLDEN_RESISTANCE_SPEAKER_Q24 (6.5 * (1 << 24))
+#endif
+//ASUS_BSP for check calibration value ---
 
 std::thread SpeakerProtection::mCalThread;
 std::condition_variable SpeakerProtection::cv;
@@ -177,24 +195,48 @@ void SpeakerProtection::handleSPCallback (uint64_t hdl __unused, uint32_t event_
                                             void *event_data, uint32_t event_size)
 {
     param_id_sp_th_vi_calib_res_cfg_t *param_data = nullptr;
+    //ASUS_BSP for check calibration value +++
+    #ifdef ASUS_DAVINCI_PROJECT
+    char rcvCalValueStr[15] = {0}, spkCalValueStr[15] = {0};
+    #endif
+    //ASUS_BSP for check calibration value ---
 
     PAL_DBG(LOG_TAG, "Got event from DSP %x", event_id);
 
     if (event_id == EVENT_ID_VI_CALIBRATION) {
         // Received callback for Calibration state
         param_data = (param_id_sp_th_vi_calib_res_cfg_t *) event_data;
-        PAL_DBG(LOG_TAG, "Calibration state %d", param_data->state);
+        PAL_INFO(LOG_TAG, "Calibration state %d", param_data->state);
 
         if (param_data->state == CALIBRATION_STATUS_SUCCESS) {
-            PAL_DBG(LOG_TAG, "Calibration is successfull");
+            PAL_INFO(LOG_TAG, "Calibration is successfull");
             callback_data = (param_id_sp_th_vi_calib_res_cfg_t *) calloc(1, event_size);
             if (!callback_data) {
                 PAL_ERR(LOG_TAG, "Unable to allocate memory");
             } else {
                 callback_data->num_ch = param_data->num_ch;
                 callback_data->state = param_data->state;
-                for (int i = 0; i < callback_data->num_ch; i++) {
-                  callback_data->r0_cali_q24[i] = param_data->r0_cali_q24[i];
+                //ASUS_BSP for check calibration value +++
+                #ifdef ASUS_DAVINCI_PROJECT
+                if (callback_data->num_ch == 2) {
+                    callback_data->r0_cali_q24[0] = param_data->r0_cali_q24[0];
+                    callback_data->r0_cali_q24[1] = param_data->r0_cali_q24[1];
+                        
+                    sprintf(rcvCalValueStr, "%lf", ((double)callback_data->r0_cali_q24[0])/(1 << 24));
+                    sprintf(spkCalValueStr, "%lf", ((double)callback_data->r0_cali_q24[1])/(1 << 24));
+                    property_set("vendor.audio.calibration.rcv.value", rcvCalValueStr);
+                    property_set("vendor.audio.calibration.spk.value", spkCalValueStr);
+                    property_set("vendor.audio.calibration", "0");
+                        
+                    PAL_INFO(LOG_TAG, "R0:%lf,R1:%lf ohms", ((double)callback_data->r0_cali_q24[0])/(1 << 24), ((double)callback_data->r0_cali_q24[1])/(1 << 24));
+
+                } else 
+                #endif
+                //ASUS_BSP for check calibration value ---
+                {
+                    for (int i = 0; i < callback_data->num_ch; i++) {
+                      callback_data->r0_cali_q24[i] = param_data->r0_cali_q24[i];
+                    }
                 }
             }
             mDspCallbackRcvd = true;
@@ -867,12 +909,12 @@ int SpeakerProtection::spkrStartCalibration()
     // Store the R0T0 values
     if (mDspCallbackRcvd) {
         if (calibrationCallbackStatus == CALIBRATION_STATUS_SUCCESS) {
-            PAL_DBG(LOG_TAG, "Calibration is done");
+            PAL_INFO(LOG_TAG, "Calibration is done");
             fp = fopen(PAL_SP_TEMP_PATH, "wb");
             if (!fp) {
                 PAL_ERR(LOG_TAG, "Unable to open file for write");
             } else {
-                PAL_DBG(LOG_TAG, "Write the R0T0 value to file");
+                PAL_INFO(LOG_TAG, "Write the R0T0 value to file");
                 for (i = 0; i < numberOfChannels; i++) {
                     fwrite(&callback_data->r0_cali_q24[i],
                                 sizeof(callback_data->r0_cali_q24[i]), 1, fp);
@@ -884,7 +926,7 @@ int SpeakerProtection::spkrStartCalibration()
             }
         }
         else if (calibrationCallbackStatus == CALIBRATION_STATUS_FAILURE) {
-            PAL_DBG(LOG_TAG, "Calibration is not done");
+            PAL_INFO(LOG_TAG, "Calibration is not done");
             spkrCalState = SPKR_NOT_CALIBRATED;
             // reset the timer for retry
             clock_gettime(CLOCK_BOOTTIME, &spkrLastTimeUsed);
@@ -1021,6 +1063,14 @@ void SpeakerProtection::spkrCalibrationThread()
                     (spkerTempList[i] < TZ_TEMP_MIN_THRESHOLD ||
                      spkerTempList[i] > TZ_TEMP_MAX_THRESHOLD)) {
                     PAL_ERR(LOG_TAG, "Temperature out of range. Retry");
+                    
+                    //ASUS_BSP for check calibration value +++
+                    #ifdef ASUS_DAVINCI_PROJECT
+                    property_set("vendor.audio.calibration.rcv", "FAIL");
+                    property_set("vendor.audio.calibration.spk", "FAIL");
+                    #endif
+                    //ASUS_BSP for check calibration value ---
+                    
                     spkrCalibrateWait();
                     continue;
                 }
@@ -1125,6 +1175,10 @@ SpeakerProtection::SpeakerProtection(struct pal_device *device,
     calibrationCallbackStatus = 0;
     mDspCallbackRcvd = false;
 
+//ASUS_BSP not do Calibration on device bootup +++
+#ifdef ASUS_DAVINCI_PROJECT
+    PAL_INFO(LOG_TAG,"not do Calibration on device bootup");
+#else
     fp = fopen(PAL_SP_TEMP_PATH, "rb");
     if (fp) {
         PAL_DBG(LOG_TAG, "Cal File exists. Reading from it");
@@ -1136,6 +1190,8 @@ SpeakerProtection::SpeakerProtection(struct pal_device *device,
                             this);
         calThrdCreated = true;
     }
+#endif
+//ASUS_BSP not do Calibration on device bootup ---
 }
 
 SpeakerProtection::~SpeakerProtection()
@@ -1672,8 +1728,17 @@ int32_t SpeakerProtection::spkrProtProcessingMode(bool flag)
         else {
             PAL_DBG(LOG_TAG, "Speaker not calibrated. Send safe value");
             for (int i = 0; i < numberOfChannels; i++) {
+                #ifdef ASUS_DAVINCI_PROJECT
+                if (i == 0) {
+                    r0t0Array[i].r0_cali_q24 = RCV_GOLDEN_RESISTANCE_Q24;//ASUS_BSP default use golden value +++
+                } else if (i ==1 ) {
+                    r0t0Array[i].r0_cali_q24 = SPK_GOLDEN_RESISTANCE_Q24;//ASUS_BSP default use golden value +++
+                }
+                PAL_INFO(LOG_TAG, "r0t0Array[%d].r0_cali_q24:%lf ohms", i, ((double)r0t0Array[i].r0_cali_q24)/(1 << 24));
+                #else
                 r0t0Array[i].r0_cali_q24 = MIN_RESISTANCE_SPKR_Q24;
                 r0t0Array[i].t0_cali_q6 = SAFE_SPKR_TEMP_Q6;
+                #endif
             }
         }
         spR0T0confg = (param_id_sp_th_vi_r0t0_cfg_t *)calloc(1,
@@ -1828,14 +1893,14 @@ int32_t SpeakerProtection::spkrProtProcessingMode(bool flag)
                 if (isTxFeandBeConnected) {
                     disconnectFeandBe(pcmDevIdTx, backEndName);
                 }
+                sAttr.type = PAL_STREAM_LOW_LATENCY;
+                sAttr.direction = PAL_AUDIO_INPUT_OUTPUT;
                 rm->freeFrontEndIds(pcmDevIdTx, sAttr, dir);
                 pcmDevIdTx.clear();
             }
             pcm_close(txPcm);
             disableDevice(audioRoute, mSndDeviceName_vi);
             txPcm = NULL;
-            sAttr.type = PAL_STREAM_LOW_LATENCY;
-            sAttr.direction = PAL_AUDIO_INPUT_OUTPUT;
             goto exit;
         }
     }
@@ -2336,8 +2401,17 @@ void SpeakerFeedback::updateVIcustomPayload()
     else {
         PAL_DBG(LOG_TAG, "Speaker not calibrated. Send safe value");
         for (int i = 0; i < numSpeaker; i++) {
+            #ifdef ASUS_DAVINCI_PROJECT
+            if (i == 0) {
+                r0t0Array[i].r0_cali_q24 = RCV_GOLDEN_RESISTANCE_Q24;//ASUS_BSP default use golden value +++
+            } else if (i ==1 ) {
+                r0t0Array[i].r0_cali_q24 = SPK_GOLDEN_RESISTANCE_Q24;//ASUS_BSP default use golden value +++
+            }
+            PAL_INFO(LOG_TAG, "r0t0Array[%d].r0_cali_q24:%lf ohms", i, ((double)r0t0Array[i].r0_cali_q24)/(1 << 24));
+			#else
             r0t0Array[i].r0_cali_q24 = MIN_RESISTANCE_SPKR_Q24;
             r0t0Array[i].t0_cali_q6 = SAFE_SPKR_TEMP_Q6;
+            #endif
         }
     }
     spR0T0confg = (param_id_sp_th_vi_r0t0_cfg_t *)calloc(1,

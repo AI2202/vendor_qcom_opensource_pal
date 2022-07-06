@@ -130,6 +130,19 @@
 #define MIXER_XML_BASE_STRING_NAME "mixer_paths"
 #define RMNGR_XMLFILE_BASE_STRING_NAME "resourcemanager"
 
+// ASUS_BSP +++
+#ifdef ASUS_DAVINCI_PROJECT
+#define MIXER_XML_PATH_DAVINCI "/vendor/etc/audio/DAVINCI/mixer_paths_DAVINCI.xml"
+#define MIXER_XML_PATH_DAVINCI_EU "/vendor/etc/audio/DAVINCI/mixer_paths_DAVINCI_EU.xml"
+char rmngr_xml_file_davinci[XML_PATH_MAX_LENGTH] = "/vendor/etc/audio/DAVINCI/resourcemanager_davinci.xml";
+#elif defined ASUS_AI2201_PROJECT
+#define MIXER_XML_PATH_AI2201 "/vendor/etc/audio/AI2201/mixer_paths_AI2201.xml"
+#define MIXER_XML_PATH_AI2201_EU "/vendor/etc/audio/AI2201/mixer_paths_AI2201_EU.xml"
+char rmngr_xml_file_texas[XML_PATH_MAX_LENGTH] = "/vendor/etc/audio/AI2201/resourcemanager_AI2201.xml";
+#endif
+// ASUS_BSP ---
+
+#define MAX_SND_CARD 10
 #define MAX_RETRY_CNT 20
 #define LOWLATENCY_PCM_DEVICE 15
 #define DEEP_BUFFER_PCM_DEVICE 0
@@ -253,6 +266,11 @@ std::vector<std::pair<int32_t, std::string>> ResourceManager::deviceLinkName {
     {PAL_DEVICE_IN_TELEPHONY_RX,          {std::string{ "" }}},
     {PAL_DEVICE_IN_ULTRASOUND_MIC,        {std::string{ "" }}},
     {PAL_DEVICE_IN_EXT_EC_REF,            {std::string{ "none" }}},
+//ASUS_BSP +++ Game mode
+#ifdef ASUS_AI2201_PROJECT
+    {PAL_DEVICE_IN_COMMUNICATION,         {std::string{ "" }}},
+#endif
+//ASUS_BSP ---
     {PAL_DEVICE_IN_MAX,                   {std::string{ "" }}},
 };
 
@@ -299,6 +317,11 @@ std::vector<std::pair<int32_t, int32_t>> ResourceManager::devicePcmId {
     {PAL_DEVICE_IN_TELEPHONY_RX,          0},
     {PAL_DEVICE_IN_ULTRASOUND_MIC,        0},
     {PAL_DEVICE_IN_EXT_EC_REF,            0},
+//ASUS_BSP +++ Game mode
+#ifdef ASUS_AI2201_PROJECT
+    {PAL_DEVICE_IN_COMMUNICATION,         0},
+#endif
+//ASUS_BSP ---
     {PAL_DEVICE_IN_MAX,                   0},
 };
 
@@ -347,6 +370,11 @@ std::vector<std::pair<int32_t, std::string>> ResourceManager::sndDeviceNameLUT {
     {PAL_DEVICE_IN_TELEPHONY_RX,          {std::string{ "" }}},
     {PAL_DEVICE_IN_ULTRASOUND_MIC,        {std::string{ "" }}},
     {PAL_DEVICE_IN_EXT_EC_REF,            {std::string{ "none" }}},
+//ASUS_BSP +++ Game mode
+#ifdef ASUS_AI2201_PROJECT
+    {PAL_DEVICE_IN_COMMUNICATION,         {std::string{ "" }}},
+#endif
+//ASUS_BSP ---
     {PAL_DEVICE_IN_MAX,                   {std::string{ "" }}},
 };
 
@@ -458,10 +486,15 @@ bool ResourceManager::isCpsEnabled = false;
 bool ResourceManager::isVbatEnabled = false;
 static int max_nt_sessions;
 bool ResourceManager::isRasEnabled = false;
+bool ResourceManager::isRing = false;//Jessy +++ ASUS ringtone feature, -18db for HEADSET
+bool ResourceManager::isHighImpHeadphone = false;//Mei +++ for high imp headphones
 bool ResourceManager::isMainSpeakerRight;
 int ResourceManager::spQuickCalTime;
 bool ResourceManager::isGaplessEnabled = false;
 bool ResourceManager::isDualMonoEnabled = false;
+#ifdef ASUS_DAVINCI_PROJECT
+bool ResourceManager::isOutdoorEnabled = false;//ASUS_BSP Mei for outdoor mode +++
+#endif
 bool ResourceManager::isUHQAEnabled = false;
 bool ResourceManager::isContextManagerEnabled = false;
 bool ResourceManager::isVIRecordStarted;
@@ -562,6 +595,11 @@ std::vector<std::pair<int32_t, std::string>> ResourceManager::listAllBackEndIds 
     {PAL_DEVICE_IN_TELEPHONY_RX,          {std::string{ "" }}},
     {PAL_DEVICE_IN_ULTRASOUND_MIC,        {std::string{ "none" }}},
     {PAL_DEVICE_IN_EXT_EC_REF,            {std::string{ "none" }}},
+//ASUS_BSP +++ Game mode
+#ifdef ASUS_AI2201_PROJECT
+    {PAL_DEVICE_IN_COMMUNICATION,         {std::string{ "none" }}},
+#endif
+//ASUS_BSP ---
     {PAL_DEVICE_IN_MAX,                   {std::string{ "" }}},
 };
 
@@ -690,8 +728,19 @@ ResourceManager::ResourceManager()
         PAL_ERR(LOG_TAG, "error in init audio route and audio mixer ret %d", ret);
         throw std::runtime_error("error in init audio route and audio mixer");
     }
-
+//ASUS_BSP +++
+/*during audio driver bringup fail,agm server will start fail,in this time call agm_register_service_crash_callback()
+  * will hangup.It will lead audio_policy block Android bootup.
+  */
+    else {
+//ASUS_BSP ---
+#ifdef ASUS_DAVINCI_PROJECT
+    ret = ResourceManager::XmlParser(rmngr_xml_file_davinci);
+#elif defined ASUS_AI2201_PROJECT
+    ret = ResourceManager::XmlParser(rmngr_xml_file_texas);
+#else
     ret = ResourceManager::XmlParser(rmngr_xml_file);
+#endif
     if (ret) {
         PAL_ERR(LOG_TAG, "error in resource xml parsing ret %d", ret);
         throw std::runtime_error("error in resource xml parsing");
@@ -820,11 +869,17 @@ ResourceManager::ResourceManager()
         throw std::runtime_error("Failed to allocate ContextManager");
 
     }
-
+      
     // init use_lpi_ flag
     use_lpi_ = IsLPISupported(PAL_STREAM_VOICE_UI) ||
         IsLPISupported(PAL_STREAM_ACD) ||
         IsLPISupported(PAL_STREAM_SENSOR_PCM_DATA);
+//ASUS_BSP +++
+/*during audio driver bringup fail,agm server will start fail,in this time call agm_register_service_crash_callback()
+  * will hangup.It will lead audio_policy block Android bootup.
+  */
+}
+//ASUS_BSP ---
 }
 
 ResourceManager::~ResourceManager()
@@ -1138,6 +1193,87 @@ char* ResourceManager::getDeviceNameFromID(uint32_t id)
     return NULL;
 }
 
+//ASUS_BSP +++
+#ifdef ASUS_DAVINCI_PROJECT
+static const char * const non_eu_country_table[] = {
+    "JP",
+    "TW",
+    "IN",
+    "HK",
+    "ID",
+    "WW",
+    "BR",
+    "MS",
+    "MJ",
+};
+#elif defined ASUS_AI2201_PROJECT
+static const char * const non_eu_country_table[] = {
+    "BD",
+    "CN",
+    "HK",
+    "ID",
+    "IL",
+    "IN",
+    "JP",
+    "MY",
+    "PH",
+    "SG",
+    "TH",
+    "TW",
+    "VN",
+};
+#endif
+
+#if defined ASUS_DAVINCI_PROJECT || defined ASUS_AI2201_PROJECT
+static bool is_non_eu_country()
+{
+    FILE *fp = NULL;
+    char country[8] = {0};
+
+    fp = fopen("/vendor/factory/COUNTRY", "r");
+    if (fp == NULL) {
+        ALOGE("failed to open the file");
+        return false;
+    } else if (fgets(country, 3, fp) == NULL) {
+        ALOGE("failed to get country");
+        fclose(fp);
+        return false;
+    }
+    fclose(fp);
+
+    ALOGD("get country: %s", country);
+
+    unsigned int i = 0;
+    for (i = 0; i < ARRAY_SIZE(non_eu_country_table); i++) {
+        if (!strcmp(country, non_eu_country_table[i])) {
+            return true;
+        }
+    }
+
+    if (!strcmp(country, "WW")) {
+        char customer[PROPERTY_VALUE_MAX] = {0};
+        fp = fopen("/vendor/factory/CUSTOMER", "r");
+        if (fp == NULL) {
+            ALOGE("failed to open the file");
+            return false;
+        } else if (fgets(customer, PROPERTY_VALUE_MAX, fp) == NULL) {
+            ALOGE("failed to get customer");
+            fclose(fp);
+            return false;
+        }
+        fclose(fp);
+
+        ALOGD("get customer: %s", customer);
+
+        if (!strcmp(customer, "ASUS"))
+            return true;
+    }
+
+    return false;
+}
+#endif
+//ASUS_BSP ---
+
 int ResourceManager::init_audio()
 {
     int retry = 0;
@@ -1147,6 +1283,7 @@ int ResourceManager::init_audio()
     char *snd_card_name = NULL;
 
     char mixer_xml_file[XML_PATH_MAX_LENGTH] = {0};
+    char asus_mixer_xml_file[MIXER_PATH_MAX_LENGTH]= {0}; // ASUS_BSP +++
     char file_name_extn[XML_PATH_EXTN_MAX_SIZE] = {0};
 
     PAL_DBG(LOG_TAG, "Enter.");
@@ -1232,8 +1369,38 @@ int ResourceManager::init_audio()
     strlcat(mixer_xml_file, XML_FILE_EXT, XML_PATH_MAX_LENGTH);
     strlcat(rmngr_xml_file, XML_FILE_EXT, XML_PATH_MAX_LENGTH);
 
-    audio_route = audio_route_init(snd_hw_card, mixer_xml_file);
-    PAL_INFO(LOG_TAG, "audio route %pK, mixer path %s", audio_route, mixer_xml_file);
+//ASUS_BSP +++
+#ifdef ASUS_DAVINCI_PROJECT
+    if (!is_non_eu_country()) {
+        strlcpy(asus_mixer_xml_file, MIXER_XML_PATH_DAVINCI_EU,
+                XML_PATH_MAX_LENGTH);
+        property_set("vendor.use.audio.eu.parameters", "true");
+    } else {
+        strlcpy(asus_mixer_xml_file, MIXER_XML_PATH_DAVINCI,
+                XML_PATH_MAX_LENGTH);
+        property_set("vendor.use.audio.eu.parameters", "false");
+    }
+#elif defined ASUS_AI2201_PROJECT
+    if (!is_non_eu_country()) {
+        strlcpy(asus_mixer_xml_file, MIXER_XML_PATH_AI2201_EU,
+                XML_PATH_MAX_LENGTH);
+        property_set("vendor.use.audio.eu.parameters", "true");
+    } else {
+        strlcpy(asus_mixer_xml_file, MIXER_XML_PATH_AI2201,
+                XML_PATH_MAX_LENGTH);
+        property_set("vendor.use.audio.eu.parameters", "false");
+    }
+#endif
+
+    if (F_OK == access(asus_mixer_xml_file, 0)) {
+        audio_route = audio_route_init(snd_hw_card, asus_mixer_xml_file);
+        PAL_INFO(LOG_TAG, "audio route %pK, mixer path %s", audio_route, asus_mixer_xml_file);
+    } else {
+//ASUS_BSP ---
+        audio_route = audio_route_init(snd_hw_card, mixer_xml_file);
+        PAL_INFO(LOG_TAG, "audio route %pK, mixer path %s", audio_route, mixer_xml_file);
+    }
+
     if (!audio_route) {
         PAL_ERR(LOG_TAG, "audio route init failed");
         mixer_close(audio_virt_mixer);
@@ -4853,6 +5020,10 @@ int ResourceManager::getActiveStream_l(std::vector<Stream*> &activestreams,
     getActiveStreams(d, activestreams, active_streams_haptics);
     getActiveStreams(d, activestreams, active_streams_ultrasound);
     getActiveStreams(d, activestreams, active_streams_sensor_pcm_data);
+    //ASUS_BSP add +++
+    getActiveStreams(d, activestreams, active_streams_context_proxy);
+    getActiveStreams(d, activestreams, active_streams_voice_rec);
+    //ASUS_BSP add ---
 
     if (activestreams.empty()) {
         ret = -ENOENT;
@@ -6481,7 +6652,8 @@ bool ResourceManager::updateDeviceConfig(std::shared_ptr<Device> *inDev,
              * voice or voip call for other usecase if share backend.
              */
             if (((VoiceorVoip_call_active &&
-                 !ifVoiceorVoipCall(inStrAttr->type)) ||
+                 inStrAttr->type != PAL_STREAM_VOICE_CALL &&
+                 rm->isOutputDevId(inDevAttr->id)) ||
                 inStrAttr->type == PAL_STREAM_ULTRASOUND) &&
                     curDevAttr.id != inDevAttr->id) {
                 inDevAttr->id = curDevAttr.id;
@@ -7703,6 +7875,36 @@ int ResourceManager::setParameter(uint32_t param_id, void *param_payload,
             }
         }
         break;
+//Jessy +++ ASUS ringtone feature, -18db for HEADSET
+        case PAL_PARAM_ID_RINGTONE_STATE:
+        {
+            pal_param_ringtone_state_t* param_ringtone_st = (pal_param_ringtone_state_t*) param_payload;
+            PAL_INFO(LOG_TAG, "Ringone State:%d", param_ringtone_st->ringtone_state);
+            if (payload_size == sizeof(pal_param_ringtone_state_t)) {
+                    rm->isRing=param_ringtone_st->ringtone_state;
+            } else {
+                PAL_ERR(LOG_TAG,"Incorrect size : expected (%zu), received(%zu)",
+                        sizeof(pal_param_screen_state_t), payload_size);
+                status = -EINVAL;
+            }
+        }
+        break;
+//Jessy ---
+//Mei +++ for high imp headphones
+        case PAL_PARAM_ID_HIGH_IMP_HEADPHONE:
+        {
+            pal_param_high_imp_state_t* param_high_imp_st = (pal_param_high_imp_state_t*) param_payload;
+            PAL_INFO(LOG_TAG, "high imp State:%d", param_high_imp_st->high_imp_state);
+            if (payload_size == sizeof(pal_param_high_imp_state_t)) {
+                    rm->isHighImpHeadphone = param_high_imp_st->high_imp_state;
+            } else {
+                PAL_ERR(LOG_TAG,"Incorrect size : expected (%zu), received(%zu)",
+                        sizeof(pal_param_high_imp_state_t), payload_size);
+                status = -EINVAL;
+            }
+        }
+        break;
+//Mei --- for high imp headphones
         case PAL_PARAM_ID_DEVICE_ROTATION:
         {
             pal_param_device_rotation_t* param_device_rot =
@@ -8373,6 +8575,64 @@ int ResourceManager::setParameter(uint32_t param_id, void *param_payload,
             }
         }
         break;
+//ASUS_BSP Mei for outdoor mode +++
+#ifdef ASUS_DAVINCI_PROJECT
+        case PAL_PARAM_ID_OUTDOOR_MODE:
+        {
+            PAL_ERR(LOG_TAG, "PAL_PARAM_ID_OUTDOOR_MODE ParamID:%d", param_id);
+            struct pal_device dattr;
+            Stream *stream = NULL;
+            std::vector<Stream*> activestreams;
+            struct pal_stream_attributes sAttr;
+            Session *session = NULL;
+
+            pal_param_outdoor_mode_t *outdoor_mode = (pal_param_outdoor_mode_t *) param_payload;
+            if (payload_size == sizeof(pal_param_outdoor_mode_t)) {
+                rm->isOutdoorEnabled = outdoor_mode->enable;
+            } else {
+                PAL_ERR(LOG_TAG, "incorrect payload size : expected (%zu), received(%zu)",
+                      sizeof(pal_param_outdoor_mode_t), payload_size);
+                status = -EINVAL;
+                goto exit;
+            }
+            PAL_INFO(LOG_TAG, "outdoor mode:%d", outdoor_mode->enable);
+
+            for (int i = 0; i < active_devices.size(); i++) {
+                int deviceId = active_devices[i].first->getSndDeviceId();
+                status = active_devices[i].first->getDeviceAttributes(&dattr);
+                if (0 != status) {
+                   PAL_ERR(LOG_TAG,"getDeviceAttributes Failed");
+                   goto exit;
+                }
+                if (PAL_DEVICE_OUT_SPEAKER == deviceId) {//outdoor mode only for speaker device
+                    status = getActiveStream_l(activestreams, active_devices[i].first);
+                    if ((0 != status) || (activestreams.size() == 0)) {
+                       PAL_ERR(LOG_TAG, "no other active streams found");
+                       status = -EINVAL;
+                       goto exit;
+                    }
+
+                    stream = static_cast<Stream *>(activestreams[0]);
+                    stream->getStreamAttributes(&sAttr);
+                    if ((sAttr.direction == PAL_AUDIO_OUTPUT) &&
+                        ((sAttr.type == PAL_STREAM_LOW_LATENCY) ||
+                        (sAttr.type == PAL_STREAM_DEEP_BUFFER) ||
+                        (sAttr.type == PAL_STREAM_COMPRESSED) ||
+                        (sAttr.type == PAL_STREAM_PCM_OFFLOAD))) {
+                        PAL_ERR(LOG_TAG, "update outdoor CKV");
+                        stream->getAssociatedSession(&session);
+                        status = session->setConfig(stream, CALIBRATION, TAG_OUTDOOR_MODE);
+                        if (0 != status) {
+                            PAL_ERR(LOG_TAG, "session setConfig failed with status %d", status);
+                            goto exit;
+                        }
+                    }
+                }
+            }
+        }
+        break;
+#endif
+//ASUS_BSP Mei for outdoor mode ---
         default:
             PAL_ERR(LOG_TAG, "Unknown ParamID:%d", param_id);
             break;
@@ -8593,6 +8853,7 @@ int ResourceManager::handleScreenStatusChange(pal_param_screen_state_t screen_st
     }
     return status;
 }
+
 
 int ResourceManager::handleDeviceRotationChange (pal_param_device_rotation_t
                                                          rotation_type) {

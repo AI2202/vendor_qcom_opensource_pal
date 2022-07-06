@@ -16,6 +16,7 @@ h_sources = ./stream/inc/Stream.h \
             ./device/inc/Headphone.h \
             ./device/inc/USBAudio.h \
             ./device/inc/SpeakerMic.h \
+            ./device/inc/Communication.h \
             ./device/inc/HeadsetMic.h \
             ./device/inc/Handset.h \
             ./device/inc/HandsetMic.h \
@@ -56,6 +57,7 @@ pal_sources = ./stream/src/Stream.cpp \
               ./device/src/Headphone.cpp \
               ./device/inc/USBAudio.cpp \
               ./device/src/SpeakerMic.cpp \
+              ./device/src/Communication.cpp \
               ./device/src/Bluetooth.cpp \
               ./device/src/HeadsetMic.cpp \
               ./device/src/HandsetMic.cpp \
@@ -89,6 +91,7 @@ h_sources = ${top_srcdir}/stream/inc/Stream.h \
             ${top_srcdir}/plugins/codecs/bt_intf.h \
             ${top_srcdir}/device/inc/USBAudio.h \
             ${top_srcdir}/device/inc/SpeakerMic.h \
+            ${top_srcdir}/device/inc/Communication.h \
             ${top_srcdir}/device/inc/HeadsetMic.h \
             ${top_srcdir}/device/inc/Handset.h \
             ${top_srcdir}/device/inc/HandsetMic.h \
@@ -151,6 +154,7 @@ pal_sources = ${top_srcdir}/stream/src/Stream.cpp \
               ${top_srcdir}/device/src/Speaker.cpp \
               ${top_srcdir}/device/src/Headphone.cpp \
               ${top_srcdir}/device/src/SpeakerMic.cpp \
+              ${top_srcdir}/device/src/Communication.cpp \
               ${top_srcdir}/device/src/Bluetooth.cpp \
               ${top_srcdir}/device/src/HeadsetMic.cpp \
               ${top_srcdir}/device/src/Handset.cpp \

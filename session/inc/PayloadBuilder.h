@@ -178,6 +178,20 @@ protected:
    static std::vector<allKVs> all_devices;
    static std::vector<allKVs> all_devicepps;
 
+// ASUS_BSP Audio for offload volume table +++
+#if defined ASUS_AI2201_PROJECT
+   static std::vector<long> speakerVolumedB;
+   static std::vector<long> headsetVolumedB;
+   static std::vector<long> btVolumedB;
+   static std::vector<long> usbVolumedB;
+#elif defined ASUS_DAVINCI_PROJECT
+   static std::vector<float> speakerVolumedB;
+   static std::vector<float> headsetVolumedB;
+   static std::vector<float> btVolumedB;
+   static std::vector<float> usbVolumedB;
+#endif
+// ASUS_BSP Audio for offload volume table ---
+
 public:
     void payloadUsbAudioConfig(uint8_t** payload, size_t* size,
                            uint32_t miid,
@@ -185,6 +199,8 @@ public:
     void payloadDpAudioConfig(uint8_t** payload, size_t* size,
                            uint32_t miid,
                            struct dpAudioConfig *data);
+    void payloadVolumeCtrlRamp(uint8_t** payload, size_t* size,
+         uint32_t miid, uint32_t ramp_period_ms);
     void payloadMFCConfig(uint8_t** payload, size_t* size,
                            uint32_t miid,
                            struct sessionToPayloadParam* data);

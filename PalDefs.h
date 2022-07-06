@@ -98,6 +98,10 @@ typedef enum {
 #define PCM_32_BIT (0x3u)
 #define PCM_16_BIT (0x1u)
 
+#if defined ASUS_AI2201_PROJECT || defined ASUS_DAVINCI_PROJECT
+#define SAMPLE_RATE_44100  44100
+#define SAMPLE_RATE_48000  48000
+#endif
 #define SAMPLE_RATE_192000 192000
 
 #ifdef __cplusplus
@@ -405,7 +409,14 @@ typedef enum {
     PAL_DEVICE_IN_ULTRASOUND_MIC = PAL_DEVICE_IN_MIN +19,
     PAL_DEVICE_IN_EXT_EC_REF = PAL_DEVICE_IN_MIN + 20,
     // Add new IN devices here, increment MAX and MIN below when you do so
+//ASUS_BSP +++ Game mode
+#ifdef ASUS_AI2201_PROJECT
+    PAL_DEVICE_IN_COMMUNICATION = PAL_DEVICE_IN_MIN + 21,
+    PAL_DEVICE_IN_MAX = PAL_DEVICE_IN_MIN + 22,
+#else
     PAL_DEVICE_IN_MAX = PAL_DEVICE_IN_MIN + 21,
+#endif
+//ASUS_BSP ---
 } pal_device_id_t;
 
 typedef enum {
@@ -474,6 +485,11 @@ static const std::map<std::string, pal_device_id_t> deviceIdLUT {
     {std::string{ "PAL_DEVICE_IN_TELEPHONY_RX" },          PAL_DEVICE_IN_TELEPHONY_RX},
     {std::string{ "PAL_DEVICE_IN_ULTRASOUND_MIC" },        PAL_DEVICE_IN_ULTRASOUND_MIC},
     {std::string{ "PAL_DEVICE_IN_EXT_EC_REF" },            PAL_DEVICE_IN_EXT_EC_REF},
+//ASUS_BSP +++ Game mode
+#ifdef ASUS_AI2201_PROJECT
+    {std::string{ "PAL_DEVICE_IN_COMMUNICATION" },         PAL_DEVICE_IN_COMMUNICATION},
+#endif
+//ASUS_BSP ---
 };
 
 //reverse mapping
@@ -519,7 +535,14 @@ static const std::map<uint32_t, std::string> deviceNameLUT {
     {PAL_DEVICE_IN_VI_FEEDBACK,           std::string{"PAL_DEVICE_IN_VI_FEEDBACK"}},
     {PAL_DEVICE_IN_TELEPHONY_RX,          std::string{"PAL_DEVICE_IN_TELEPHONY_RX"}},
     {PAL_DEVICE_IN_ULTRASOUND_MIC,        std::string{"PAL_DEVICE_IN_ULTRASOUND_MIC"}},
+//ASUS_BSP +++ Game mode
+#ifdef ASUS_AI2201_PROJECT
+    {PAL_DEVICE_IN_EXT_EC_REF,            std::string{"PAL_DEVICE_IN_EXT_EC_REF"}},
+    {PAL_DEVICE_IN_COMMUNICATION,         std::string{"PAL_DEVICE_IN_COMMUNICATION"}}
+#else
     {PAL_DEVICE_IN_EXT_EC_REF,            std::string{"PAL_DEVICE_IN_EXT_EC_REF"}}
+#endif
+//ASUS_BSP ---
 };
 
 const std::map<std::string, uint32_t> usecaseIdLUT {
@@ -872,6 +895,12 @@ typedef enum {
     PAL_PARAM_ID_VOLUME_USING_SET_PARAM = 55,
     PAL_PARAM_ID_UHQA_FLAG = 56,
     PAL_PARAM_ID_STREAM_ATTRIBUTES = 57,
+    PAL_PARAM_ID_VOLUME_CTRL_RAMP = 58,
+#ifdef ASUS_DAVINCI_PROJECT
+    PAL_PARAM_ID_OUTDOOR_MODE = 70,//asus_bsp Mei for outdoor mode +++
+    PAL_PARAM_ID_HIGH_IMP_HEADPHONE = 71,//asus_bsp Mei for high imp headphones +++
+#endif
+    PAL_PARAM_ID_RINGTONE_STATE = 90,//Jessy +++ ASUS ringtone feature, -18db for HEADSET
 } pal_param_id_type_t;
 
 /** HDMI/DP */
@@ -881,6 +910,14 @@ typedef enum {
 // END: MST ==================================================
 
 /** Audio parameter data*/
+
+//ASUS_BSP Mei for outdoor mode +++
+#ifdef ASUS_DAVINCI_PROJECT
+typedef struct pal_param_outdoor_mode {
+    bool     enable;
+} pal_param_outdoor_mode_t;
+#endif
+//ASUS_BSP Mei for outdoor mode ---
 
 typedef struct pal_param_proxy_channel_config {
     uint32_t num_proxy_channels;
@@ -910,6 +947,10 @@ struct pal_amp_db_and_gain_table {
     float    amp;
     float    db;
     uint32_t level;
+};
+
+struct pal_vol_ctrl_ramp_param {
+   uint32_t ramp_period_ms;
 };
 
 /* Payload For ID: PAL_PARAM_ID_DEVICE_CONNECTION
@@ -1075,6 +1116,24 @@ typedef struct pal_bt_tws_payload_s {
     bool isTwsMonoModeOn;
     uint32_t codecFormat;
 } pal_bt_tws_payload;
+
+//Jessy +++ ASUS ringtone feature, -18db for HEADSET
+/* Payload For ID: PAL_PARAM_ID_RINGTONE_STATE
+ * Description   : Ringtone State
+*/
+typedef struct pal_param_ringtone_state {
+    bool              ringtone_state;
+} pal_param_ringtone_state_t;
+//Jessy ---
+
+//Mei +++ for high imp headphones
+/* Payload For ID: PAL_PARAM_ID_high_imp_STATE
+ * Description   : high imp headphone State
+*/
+typedef struct pal_param_high_imp_state {
+    bool              high_imp_state;
+} pal_param_high_imp_state_t;
+//Mei ---
 
 /* Payload For Custom Config
  * Description : Used by PAL client to customize

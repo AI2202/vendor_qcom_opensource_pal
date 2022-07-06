@@ -1031,6 +1031,7 @@ int SessionAlsaCompress::setConfig(Stream * s, configType type, int tag)
                 goto exit;
             }
             if (ckv.size() == 0) {
+                PAL_ERR(LOG_TAG, "Failed ckv.size() is 0\n");
                 status = -EINVAL;
                 goto exit;
             }
@@ -1038,6 +1039,7 @@ int SessionAlsaCompress::setConfig(Stream * s, configType type, int tag)
             calConfig = (struct agm_cal_config*)malloc (sizeof(struct agm_cal_config) +
                             (ckv.size() * sizeof(agm_key_value)));
             if (!calConfig) {
+                PAL_ERR(LOG_TAG, "malloc calConfig failed\n");
                 status = -EINVAL;
                 goto exit;
             }
@@ -1327,11 +1329,26 @@ int SessionAlsaCompress::close(Stream * s)
 
     s->getStreamAttributes(&sAttr);
     if (!compress) {
-        if (compressDevIds.size() != 0)
+        if (compressDevIds.size() != 0) {
+            disconnectCtrlName << "COMPRESS" << compressDevIds.at(0) << " disconnect";
+            disconnectCtrl = mixer_get_ctl_by_name(mixer, disconnectCtrlName.str().data());
+            if (!disconnectCtrl) {
+                PAL_ERR(LOG_TAG, "[ASUS]invalid mixer control: %s", disconnectCtrlName.str().data());
+            }
+            if (!rxAifBackEnds.empty() && disconnectCtrl) {
+                PAL_INFO(LOG_TAG, "Disconnect FE to BE set %s %s Ctrl in no compress situation",
+                    disconnectCtrlName.str().data(), rxAifBackEnds[0].second.data());
+                mixer_ctl_set_enum_by_string(disconnectCtrl, rxAifBackEnds[0].second.data());
+            }
             rm->freeFrontEndIds(compressDevIds, sAttr, 0);
+        }
         if (rm->cardState == CARD_STATUS_OFFLINE) {
             if (sessionCb)
                 sessionCb(cbCookie, PAL_STREAM_CBK_EVENT_ERROR, NULL, 0);
+        } else {
+            PAL_INFO(LOG_TAG, "[ASUS] Deregister for mixer event callback");
+            status = rm->registerMixerEventCallback(compressDevIds, sessionCb, cbCookie,
+                        false);
         }
         goto exit;
         /** close unstarted session should return normal. */
@@ -1423,7 +1440,7 @@ int SessionAlsaCompress::write(Stream *s __unused, int tag __unused, struct pal_
         return -EINVAL;
     }
 
-    PAL_DBG(LOG_TAG, "buf->size is %zu buf->buffer is %pK ",
+    PAL_VERBOSE(LOG_TAG, "buf->size is %zu buf->buffer is %pK ",
             buf->size, buf->buffer);
 
     bytes_written = compress_write(compress, buf->buffer, buf->size);
@@ -1432,7 +1449,7 @@ int SessionAlsaCompress::write(Stream *s __unused, int tag __unused, struct pal_
              buf->size, bytes_written);
 
     if (bytes_written >= 0 && bytes_written < (ssize_t)buf->size && non_blocking) {
-        PAL_DBG(LOG_TAG, "No space available in compress driver, post msg to cb thread");
+        PAL_VERBOSE(LOG_TAG, "No space available in compress driver, post msg to cb thread");
         std::shared_ptr<offload_msg> msg = std::make_shared<offload_msg>(OFFLOAD_CMD_WAIT_FOR_BUFFER);
         std::lock_guard<std::mutex> lock(cv_mutex_);
         msg_queue_.push(msg);
@@ -1665,6 +1682,25 @@ int SessionAlsaCompress::setParameters(Stream *s __unused, int tagId, uint32_t p
                 status = SessionAlsaUtils::setMixerParameter(mixer, device,
                                                alsaParamData, alsaPayloadSize);
                 PAL_INFO(LOG_TAG, "mixer set volume config status=%d\n", status);
+                freeCustomPayload(&alsaParamData, &alsaPayloadSize);
+            }
+            break;
+        }
+        case PAL_PARAM_ID_VOLUME_CTRL_RAMP:
+        {
+            struct pal_vol_ctrl_ramp_param *rampParam = (struct pal_vol_ctrl_ramp_param *)payload;
+            status = SessionAlsaUtils::getModuleInstanceId(mixer, device,
+                               rxAifBackEnds[0].second.data(), tagId, &miid);
+            if (0 != status) {
+                PAL_ERR(LOG_TAG, "Failed to get tag info %x, status = %d", tagId, status);
+                return status;
+            }
+            builder->payloadVolumeCtrlRamp(&alsaParamData, &alsaPayloadSize,
+                 miid, rampParam->ramp_period_ms);
+            if (alsaPayloadSize) {
+                status = SessionAlsaUtils::setMixerParameter(mixer, device,
+                                               alsaParamData, alsaPayloadSize);
+                PAL_INFO(LOG_TAG, "mixer set vol ctrl ramp status=%d\n", status);
                 freeCustomPayload(&alsaParamData, &alsaPayloadSize);
             }
             break;

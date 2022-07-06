@@ -582,9 +582,14 @@ public:
     static bool isCpsEnabled;
     static bool isVbatEnabled;
     static bool isRasEnabled;
+    static bool isRing;//Jessy +++ ASUS ringtone feature, -18db for HEADSET
+    static bool isHighImpHeadphone;//Mei +++ for high imp headphones
     static bool isGaplessEnabled;
     static bool isContextManagerEnabled;
     static bool isDualMonoEnabled;
+#ifdef ASUS_DAVINCI_PROJECT
+    static bool isOutdoorEnabled;//ASUS_BSP Mei for outdoor mode +++
+#endif
     static bool isUHQAEnabled;
     static bool isSignalHandlerEnabled;
     /* Variable to store which speaker side is being used for call audio.

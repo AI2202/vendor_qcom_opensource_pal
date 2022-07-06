@@ -16,9 +16,19 @@ LOCAL_CFLAGS        += -Wno-macro-redefined
 LOCAL_CFLAGS        += -Wall -Werror -Wno-unused-variable -Wno-unused-parameter
 LOCAL_CFLAGS        += -DCONFIG_GSL
 LOCAL_CFLAGS        += -D_GNU_SOURCE
-LOCAL_CFLAGS        += -DPAL_SP_TEMP_PATH=\"/data/vendor/audio/audio.cal\"
+LOCAL_CFLAGS        += -DPAL_SP_TEMP_PATH=\"/mnt/vendor/persist/audio/audio.cal\"
 LOCAL_CFLAGS        += -DACD_SM_FILEPATH=\"/vendor/etc/models/acd/\"
 LOCAL_CPPFLAGS      += -fexceptions -frtti
+
+# ASUS_BSP +++
+ifeq ($(ASUS_BUILD_PROJECT),AI2201)
+LOCAL_CFLAGS   += -DASUS_AI2201_PROJECT
+endif
+
+ifeq ($(ASUS_BUILD_PROJECT),AI2202)
+LOCAL_CFLAGS   += -DASUS_DAVINCI_PROJECT
+endif
+# ASUS_BSP ---
 
 LOCAL_C_INCLUDES := \
     $(LOCAL_PATH)/stream/inc \
@@ -71,6 +81,7 @@ LOCAL_SRC_FILES := \
     device/src/Speaker.cpp \
     device/src/Bluetooth.cpp \
     device/src/SpeakerMic.cpp \
+    device/src/Communication.cpp \
     device/src/HeadsetMic.cpp \
     device/src/HandsetMic.cpp \
     device/src/Handset.cpp \

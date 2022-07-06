@@ -39,6 +39,7 @@
 #include "Headphone.h"
 #include "USBAudio.h"
 #include "SpeakerMic.h"
+#include "Communication.h"
 #include "Stream.h"
 #include "HeadsetMic.h"
 #include "HandsetMic.h"
@@ -95,6 +96,13 @@ std::shared_ptr<Device> Device::getInstance(struct pal_device *device,
     case PAL_DEVICE_IN_SPEAKER_MIC:
         PAL_VERBOSE(LOG_TAG, "speakerMic device");
         return SpeakerMic::getInstance(device, Rm);
+//ASUS_BSP +++ Game mode
+#ifdef ASUS_AI2201_PROJECT
+    case PAL_DEVICE_IN_COMMUNICATION:
+        PAL_VERBOSE(LOG_TAG, "communication device");
+        return Communication::getInstance(device, Rm);
+#endif
+//ASUS_BSP ---
     case PAL_DEVICE_IN_WIRED_HEADSET:
         PAL_VERBOSE(LOG_TAG, "HeadsetMic device");
         return HeadsetMic::getInstance(device, Rm);
@@ -182,6 +190,13 @@ std::shared_ptr<Device> Device::getObject(pal_device_id_t dev_id)
     case PAL_DEVICE_IN_SPEAKER_MIC:
         PAL_VERBOSE(LOG_TAG, "speaker mic device");
         return SpeakerMic::getObject();
+//ASUS_BSP +++ Game mode
+#ifdef ASUS_AI2201_PROJECT
+    case PAL_DEVICE_IN_COMMUNICATION:
+        PAL_VERBOSE(LOG_TAG, "communication device");
+        return Communication::getObject();
+#endif
+//ASUS_BSP ---
     case PAL_DEVICE_IN_WIRED_HEADSET:
         PAL_VERBOSE(LOG_TAG, "headset mic device");
         return HeadsetMic::getObject();

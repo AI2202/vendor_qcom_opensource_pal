@@ -1123,8 +1123,8 @@ void BtA2dp::open_a2dp_source()
             ret = audio_source_open();
             if (ret != 0) {
                 PAL_ERR(LOG_TAG, "Failed to open source stream for a2dp: status %d", ret);
-            }
-            a2dpState = A2DP_STATE_CONNECTED;
+            } else 
+                a2dpState = A2DP_STATE_CONNECTED;
         } else {
             PAL_DBG(LOG_TAG, "Called a2dp open with improper state %d", a2dpState);
         }
